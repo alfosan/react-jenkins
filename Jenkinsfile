@@ -81,11 +81,11 @@ pipeline {
         stage('Push_Changes') {
             steps {
                 sh '''
-                    git config user.name "jenkins"
-                    git config user.email "jenkins@example.com"
+                    git config user.name "alfosan"
+                    git config user.email "lloalfsan@gmail.com"
                     git add README.md
                     git commit -m "Pipeline executada per ${params.Executor}. Motiu: ${params.Motiu}"
-                    git push origin ci_jenkins
+                    git push origin main
                 '''
             }
         }
