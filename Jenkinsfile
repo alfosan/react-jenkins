@@ -121,9 +121,14 @@ pipeline {
                     - Test_stage: ${env.TEST_STAGE}
                     - Update_readme_stage: ${env.UPDATE_README_STAGE}
                     - Deploy_to_Vercel_stage: ${env.DEPLOY_STAGE}"""
-                    sh "curl -X POST https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/sendMessage -d chat_id=${params.ChatID} -d text='${message}'"
+                    sh "curl -X POST https://api.telegram.org/bot7552715332:AAFiyqyO0xqf5ZpTIoeaNnIa1lqp0GRvWIA/sendMessage -d chat_id=${params.ChatID} -d text='${message}'"
                 }
             }
+        }
+    }
+    post {
+        always {
+            echo 'Pipeline finalitzada. Revisa els resultats!'
         }
     }
 }
