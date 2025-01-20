@@ -26,67 +26,34 @@ pipeline {
         }
         stage('Linter') {
             steps {
+                echo "Running Linter..."
                 sh 'npx eslint src/**/*.js || true'
-            }
-            post {
-                success {
-                    script {
-                        env.LINTER_STAGE = 'Success'
-                    }
-                }
-                failure {
-                    script {
-                        env.LINTER_STAGE = 'Failure'
-                    }
-                }
             }
         }
         stage('Test') {
             steps {
+                echo "Running Tests..."
                 sh 'npx jest'
-            }
-            post {
-                success {
-                    script {
-                        env.TEST_STAGE = 'Success'
-                    }
-                }
-                failure {
-                    script {
-                        env.TEST_STAGE = 'Failure'
-                    }
-                }
             }
         }
         stage('Build') {
             steps {
+                echo "Building project..."
                 sh 'npm run build'
             }
         }
         stage('Update_Readme') {
             steps {
+                echo "Updating README with test results..."
                 script {
                     def badge = env.TEST_STAGE == 'Success' ? '![Success](https://img.shields.io/badge/tested%20with-Cypress-04C38E.svg)' : '![Failure](https://img.shields.io/badge/test-failure-red)'
-                    sh """
-                        echo "## RESULTADO DE LOS ÚLTIMOS TESTS\n\n${badge}" > README.md
-                    """
-                }
-            }
-            post {
-                success {
-                    script {
-                        env.UPDATE_README_STAGE = 'Success'
-                    }
-                }
-                failure {
-                    script {
-                        env.UPDATE_README_STAGE = 'Failure'
-                    }
+                    writeFile file: 'README.md', text: "## RESULTADO DE LOS ÚLTIMOS TESTS\n\n${badge}"
                 }
             }
         }
         stage('Push Changes') {
             steps {
+                echo "Pushing changes to GitHub..."
                 sh './jenkinsScripts/pushChanges.sh "${params.Executor}" "${params.Motiu}"'
             }
         }
@@ -99,30 +66,20 @@ pipeline {
                 }
             }
             steps {
+                echo "Deploying to Vercel..."
                 sh './jenkinsScripts/deployToVercel.sh'
-            }
-            post {
-                success {
-                    script {
-                        env.DEPLOY_STAGE = 'Success'
-                    }
-                }
-                failure {
-                    script {
-                        env.DEPLOY_STAGE = 'Failure'
-                    }
-                }
             }
         }
         stage('Notificació') {
             steps {
+                echo "Sending notification to Telegram..."
                 script {
                     def message = """
                     S'ha executat la pipeline de Jenkins amb els següents resultats:
-                    - Linter_stage: ${env.LINTER_STAGE}
-                    - Test_stage: ${env.TEST_STAGE}
-                    - Update_readme_stage: ${env.UPDATE_README_STAGE}
-                    - Deploy_to_Vercel_stage: ${env.DEPLOY_STAGE}
+                    - Linter_stage: ${env.LINTER_STAGE ?: 'Unknown'}
+                    - Test_stage: ${env.TEST_STAGE ?: 'Unknown'}
+                    - Update_readme_stage: ${env.UPDATE_README_STAGE ?: 'Unknown'}
+                    - Deploy_to_Vercel_stage: ${env.DEPLOY_STAGE ?: 'Unknown'}
                     """
                     sh """
                         curl -X POST https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage -d chat_id=${TELEGRAM_CHAT_ID} -d text="${message}"
