@@ -1,22 +1,27 @@
 pipeline {
     agent any
+    environment {
+        REACT_APP_VERCEL_ANALYTICS_ID = credentials('VERCEL_ANALYTICS_ID')
+        GMAIL_USER = credentials('GMAIL_USER')
+        GMAIL_PASS = credentials('GMAIL_PASS')
+        METRICS_TOKEN = credentials('METRICS_TOKEN')
+        VERCEL_TOKEN = credentials('VERCEL_TOKEN')
+        ORG_ID = credentials('ORG_ID')
+        PROJECT_ID = credentials('PROJECT_ID')
+        PAT_TOKEN = credentials('PAT_TOKEN')
+        TELEGRAM_TOKEN = credentials('TELEGRAM_TOKEN')
+        TELEGRAM_CHAT_ID = credentials('TELEGRAM_CHAT_ID')
+    }
     parameters {
         string(name: 'Executor', defaultValue: 'Unknown', description: 'Nom de qui executa la pipeline')
         string(name: 'Motiu', defaultValue: 'Testing', description: 'Motiu de l\'execució')
-        string(name: 'ChatID', defaultValue: '', description: 'Chat ID de Telegram')
-    }
-    environment {
-        LINTER_STAGE = 'Failure'
-        TEST_STAGE = 'Failure'
-        UPDATE_README_STAGE = 'Failure'
-        DEPLOY_STAGE = 'Failure'
     }
     stages {
         stage('Petició de dades') {
             steps {
                 echo "Executor: ${params.Executor}"
                 echo "Motiu: ${params.Motiu}"
-                echo "ChatID: ${params.ChatID}"
+                echo "ChatID: ${TELEGRAM_CHAT_ID}"
             }
         }
         stage('Linter') {
@@ -62,7 +67,9 @@ pipeline {
             steps {
                 script {
                     def badge = env.TEST_STAGE == 'Success' ? '![Success](https://img.shields.io/badge/tested%20with-Cypress-04C38E.svg)' : '![Failure](https://img.shields.io/badge/test-failure-red)'
-                    sh "echo 'RESULTADO DE LOS ÚLTIMOS TESTS\n${badge}' >> README.md"
+                    sh """
+                        echo "## RESULTADO DE LOS ÚLTIMOS TESTS\n\n${badge}" > README.md
+                    """
                 }
             }
             post {
@@ -78,15 +85,9 @@ pipeline {
                 }
             }
         }
-        stage('Push_Changes') {
+        stage('Push Changes') {
             steps {
-                sh '''
-                    git config user.name "alfosan"
-                    git config user.email "lloalfsan@gmail.com"
-                    git add README.md
-                    git commit -m "Pipeline executada per ${params.Executor}. Motiu: ${params.Motiu}"
-                    git push origin main
-                '''
+                sh './jenkinsScripts/pushChanges.sh "${params.Executor}" "${params.Motiu}"'
             }
         }
         stage('Deploy to Vercel') {
@@ -98,7 +99,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'vercel --prod'
+                sh './jenkinsScripts/deployToVercel.sh'
             }
             post {
                 success {
@@ -116,12 +117,16 @@ pipeline {
         stage('Notificació') {
             steps {
                 script {
-                    def message = """S'ha executat la pipeline de jenkins amb els següents resultats:
+                    def message = """
+                    S'ha executat la pipeline de Jenkins amb els següents resultats:
                     - Linter_stage: ${env.LINTER_STAGE}
                     - Test_stage: ${env.TEST_STAGE}
                     - Update_readme_stage: ${env.UPDATE_README_STAGE}
-                    - Deploy_to_Vercel_stage: ${env.DEPLOY_STAGE}"""
-                    sh "curl -X POST https://api.telegram.org/bot7552715332:AAFiyqyO0xqf5ZpTIoeaNnIa1lqp0GRvWIA/sendMessage -d chat_id=${params.ChatID} -d text='${message}'"
+                    - Deploy_to_Vercel_stage: ${env.DEPLOY_STAGE}
+                    """
+                    sh """
+                        curl -X POST https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage -d chat_id=${TELEGRAM_CHAT_ID} -d text="${message}"
+                    """
                 }
             }
         }
